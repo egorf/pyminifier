@@ -118,6 +118,7 @@ def find_obfuscatables(tokens, obfunc, ignore_length=False, ign_uppercase_variab
     be obfuscated anyway (even though it wouldn't save any space).
     """
     inside_class = False
+    inside_arguments = False # like lambda or function params
     indent = 0
     class_indent = 0
     global keyword_args
@@ -134,6 +135,7 @@ def find_obfuscatables(tokens, obfunc, ignore_length=False, ign_uppercase_variab
         token_type = tok[0]
         token_string = tok[1]
         if token_type == tokenize.NEWLINE:
+            inside_arguments = False
             skip_line = False
         elif token_type == tokenize.INDENT:
             indent += 1
@@ -146,10 +148,13 @@ def find_obfuscatables(tokens, obfunc, ignore_length=False, ign_uppercase_variab
             class_indent = indent
             class_name = tokens[index+1][1]
             inside_class = class_name
+        if token_string == "lambda" or token_string == "def":
+            inside_arguments = True
+            continue
         if skip_line:
             continue
         if not inside_class or class_indent != (indent - 1): # dont look at class static attributes
-            result = obfunc(tokens, index, ignore_length=ignore_length, ign_uppercase_variables=ign_uppercase_variables, inside_class=inside_class)
+            result = obfunc(tokens, index, ignore_length=ignore_length, ign_uppercase_variables=ign_uppercase_variables, inside_class=inside_class, inside_arguments=inside_arguments)
         if result:
             if skip_next:
                 skip_next = False
@@ -166,7 +171,7 @@ def find_obfuscatables(tokens, obfunc, ignore_length=False, ign_uppercase_variab
     return obfuscatables
 
 # Note: I'm using 'tok' instead of 'token' since 'token' is a built-in module
-def obfuscatable_variable(tokens, index, ignore_length=False, ign_uppercase_variables=False, inside_class=None):
+def obfuscatable_variable(tokens, index, ignore_length=False, ign_uppercase_variables=False, inside_class=None, inside_arguments=None):
     """
     Given a list of *tokens* and an *index* (representing the current position),
     returns the token string if it is a variable name that can be safely
@@ -194,7 +199,7 @@ def obfuscatable_variable(tokens, index, ignore_length=False, ign_uppercase_vari
     except IndexError: # Pretend it's a newline
         next_tok = (54, '\n', (1, 1), (1, 2), '#\n')
     next_tok_string = next_tok[1]
-    if token_string == "=":
+    if token_string == "=" and next_tok_string not in RESERVED_WORDS:
         return '__skipline__'
     if token_type != tokenize.NAME:
         return None # Skip this token
@@ -219,7 +224,7 @@ def obfuscatable_variable(tokens, index, ignore_length=False, ign_uppercase_vari
             return None
     if token_string in ["def", "class", 'if', 'elif', 'import']:
         return '__skipline__'
-    if prev_tok_type != tokenize.INDENT and next_tok_string != '=':
+    if prev_tok_type != tokenize.INDENT and next_tok_string != '=' and not inside_arguments:
         return '__skipline__'
     if not ignore_length:
         if len(token_string) < 3:
