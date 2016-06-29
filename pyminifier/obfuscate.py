@@ -603,6 +603,30 @@ def obfuscate_builtins(module, tokens, name_generator, table=None):
                 skip_tokens += 1
     insert_in_next_line(tokens, skip_tokens, obfuscated_assignments)
 
+def debug_obfuscate_enumerations(module, tokens, name_generator, table=None, variables=None, functions=None, classes=None):
+    print("variables: %s" % variables)
+    print("functions: %s" % functions)
+    print("classes: %s" % classes)
+    keyword_args = analyze.enumerate_keyword_args(tokens)
+    print("keyword_args: %s" % keyword_args)
+    class_args = analyze.enumerate_class_args(tokens)
+    print("class_args: %s" % class_args)
+    imports = analyze.enumerate_imports(tokens)
+    print("imports: %s" % imports)
+    global_imports = analyze.enumerate_global_imports(tokens)
+    print("global_imports: %s" % global_imports)
+    dynamic_imports = analyze.enumerate_dynamic_imports(tokens)
+    print("dynamic_imports: %s" % dynamic_imports)
+    method_calls = analyze.enumerate_method_calls(tokens, module)
+    print("method_calls: %s" % method_calls)
+    builtins = analyze.enumerate_builtins(tokens)
+    print("builtins: %s" % builtins)
+    import_methods = analyze.enumerate_import_methods(tokens)
+    print("import_methods: %s" % import_methods)
+    local_modules = analyze.enumerate_local_modules(tokens, os.getcwd())
+    print("local_modules: %s" % local_modules)
+    # print("RESERVED_WORDS", RESERVED_WORDS)
+
 def obfuscate_global_import_methods(module, tokens, name_generator, table=None):
     """
     Replaces the used methods of globally-imported modules with obfuscated
@@ -746,6 +770,8 @@ def obfuscate(module, tokens, options, name_generator=None, table=None):
                 module, tokens, obfuscate_class, _class, name_generator, table)
         obfuscate_global_import_methods(module, tokens, name_generator, table)
         obfuscate_builtins(module, tokens, name_generator, table)
+        # debug
+        # debug_obfuscate_enumerations(module, tokens, name_generator, table, variables, functions, classes)
     else:
         if options.obf_classes:
             classes = find_obfuscatables(
